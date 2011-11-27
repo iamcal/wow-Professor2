@@ -1,10 +1,10 @@
-local _VERSION = GetAddOnMetadata('Professor', 'version')
+local _VERSION = GetAddOnMetadata('Professor2', 'version')
 
-local addon	= LibStub("AceAddon-3.0"):NewAddon("Professor", "AceConsole-3.0", "AceEvent-3.0")
+local addon	= LibStub("AceAddon-3.0"):NewAddon("Professor2", "AceConsole-3.0", "AceEvent-3.0")
 _G.Professor = addon
 
 function addon:OnInitialize()
-	addon:RegisterChatCommand("prof", "SlashProcessorFunction")
+	addon:RegisterChatCommand("prof2", "SlashProcessorFunction")
 end
 
 

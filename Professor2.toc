@@ -1,0 +1,14 @@
+## Title: Professor2
+## Author: iamcal, Anossov, Ackis
+## SavedVariables: Professor2DB
+## Notes: Artifact counts tracking
+
+## Interface: 40200
+## Version: v0.0.1
+
+#@no-lib-strip@
+# Libraries
+embeds.xml
+#@end-no-lib-strip@
+
+Professor2.lua
