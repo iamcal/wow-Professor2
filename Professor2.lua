@@ -115,6 +115,16 @@ function Professor.Artifact:new(name, icon, spellId, itemId, rare, fragments)
 
         firstComletionTime = nil;
         solves = 0;
+
+	getLink = function(self)
+
+		local name, link = GetItemInfo(self.itemId)
+		if (link == nil) then
+			link = GetSpellLink(self.spellId)
+		end
+
+		return "|T"..self.icon..":0|t "..link;
+	end;
     }
 
     setmetatable(o, self)
@@ -684,10 +694,10 @@ function addon:ShowTooltip(raceId, mode)
 			GameTooltip:AddLine(" ");
 			
 			for icon, artifact in pairs(race.artifacts) do
-				local link = GetSpellLink(artifact.spellId)
+
 				if ((artifact.solves == 0) and (artifact.rare == false)) then
 
-					GameTooltip:AddLine("|T"..artifact.icon..":0|t"..link);
+					GameTooltip:AddLine(artifact:getLink());
 				end
 			end
 		end
@@ -706,10 +716,10 @@ function addon:ShowTooltip(raceId, mode)
 			GameTooltip:AddLine(" ");
 			
 			for icon, artifact in pairs(race.artifacts) do
-				local link = GetSpellLink(artifact.spellId)
+
 				if ((artifact.solves == 0) and (artifact.rare == true)) then
 
-					GameTooltip:AddLine("|T"..artifact.icon..":0|t"..link);
+					GameTooltip:AddLine(artifact:getLink());
 				end
 			end
 		end
