@@ -1,0 +1,19 @@
+tag v0.4.2
+de6a840c3551ea83cc4ed4bcb5f076a238a44b16
+John Pasula <ackis@shaw.ca>
+2011-10-02 03:04:33 -0600
+
+Tagging as 0.4.2
+
+
+--------------------
+
+John Pasula:
+	- Make functions accessible from outside the scope (e.g. using addon and finally _G.professor = addon.
+	- Move slash command set up in to oninit.
+	- Remove hard embedded libraries.
+	- Add functionality to keep track of the total number of solves you've completed.
+	- Spit out a warning when you don't actually know archaeology.
+	- Few more ToC Tweaks.
+	- Support disembedding properly.
+	- Update ToC, add .pkgmeta and .docmeta.  Project is licensed under public domain.

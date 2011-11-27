@@ -1,0 +1,21 @@
+## Title: Professor
+## Author: Anossov, Ackis
+## SavedVariables: ProfessorDB
+## Notes: Artifact counts tracking
+## X-Curse-Packaged-Version: v0.4.2
+## X-Curse-Project-Name: Professor
+## X-Curse-Project-ID: professor
+## X-Curse-Repository-ID: wow/professor/mainline
+
+## Interface: 40200
+## X-Compatible-With: 40200
+## Version: v0.4.2
+## X-Revision: 0f0cc01
+## X-Date: 2011-10-02T08:34:48Z
+
+#@no-lib-strip@
+# Libraries
+embeds.xml
+#@end-no-lib-strip@
+
+Professor.lua
