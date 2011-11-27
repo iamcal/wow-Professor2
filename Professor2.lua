@@ -5,6 +5,14 @@ _G.Professor = addon
 
 function addon:OnInitialize()
 	addon:RegisterChatCommand("prof2", "SlashProcessorFunction")
+
+	addon:LoadOptions();
+	addon:BuildFrame();
+
+	self:RegisterEvent("ARTIFACT_HISTORY_READY", "OnArtifcatHistoryReady");
+	self:RegisterEvent("ARTIFACT_UPDATE", "OnArtifactUpdate");
+	self:RegisterEvent("PLAYER_LOGOUT", "SaveOptions");
+	addon:OnArtifactUpdate();
 end
 
 
@@ -444,3 +452,302 @@ Professor.artifactDB = {
       { 64655, 91782, 0,  45 },  -- Tiny Oasis Mosaic
     };
 }
+
+
+--
+--
+--
+
+
+Professor.defaults = {
+	hide = false,
+	lock = false,
+	frameRef = "CENTER",
+	frameX = 0,
+	frameY = 0,
+
+	framePadding = 3,
+	frameIconSize = 30,
+	frameMeterSize = 40,
+};
+
+
+Professor.options = {};
+
+function addon:LoadOptions()
+
+	_G.Professor2DB = _G.Professor2DB or {};
+
+	local db = _G.Professor2DB;
+	local p = Professor;
+
+	Professor.options = {};
+	for k,v in pairs(p.defaults) do
+		if (db[k]) then
+			Professor.options[k] = db[k];
+		else
+			Professor.options[k] = v;
+		end
+	end
+end
+
+function addon:SaveOptions()
+
+	local p = Professor;
+	local cfg = Professor.options;
+
+	local point, relativeTo, relativePoint, xOfs, yOfs = p.UIFrame:GetPoint()
+	cfg.frameRef = relativePoint;
+	cfg.frameX = xOfs;
+	cfg.frameY = yOfs;
+
+	_G.Professor2DB = cfg;
+end
+
+function addon:BuildFrame()
+
+	-- need races before we create icons
+	self:LoadRaces();
+
+	local cfg = Professor.options;
+	local p = Professor;
+
+	p.FrameWidth = (cfg.framePadding * 4) + (cfg.frameIconSize) + (cfg.frameMeterSize * 2);
+
+	p.UIFrame = CreateFrame("Frame", nil, UIParent);
+	p.UIFrame:SetFrameStrata("BACKGROUND")
+	p.UIFrame:SetWidth(p.FrameWidth);
+	p.UIFrame:SetHeight(100);
+	p.UIFrame:SetPoint(cfg.frameRef, cfg.frameX, cfg.frameY);
+	p.UIFrame:SetMovable(true);
+
+	p.UIFrame.texture = p.UIFrame:CreateTexture()
+	p.UIFrame.texture:SetAllPoints(p.UIFrame)
+	p.UIFrame.texture:SetTexture(0, 0, 0, 0.5)
+
+	p.Cover = CreateFrame("Button", nil, p.UIFrame);
+	p.Cover:SetFrameLevel(100);
+	p.Cover:SetAllPoints();
+	addon:Mouseify(p.Cover);
+
+	local y = cfg.framePadding;
+
+	for raceIndex, race in ipairs(self.races) do
+
+
+		race.icon = p:CreateButton(cfg.framePadding, y, cfg.frameIconSize, cfg.frameIconSize, race.icon, raceIndex, 0);
+		race.icon:SetFrameLevel(101);
+
+		race.bar1bg = p:CreateBar(cfg.framePadding + cfg.framePadding + cfg.frameIconSize, y, cfg.frameMeterSize, cfg.frameIconSize, 0.5, 0.5, 0.5, raceIndex, 1);
+		race.bar1bg:SetFrameLevel(101);
+		race.bar1fg = p:CreateBar(cfg.framePadding + cfg.framePadding + cfg.frameIconSize, y, cfg.frameMeterSize / 2, cfg.frameIconSize, 1, 1, 1, raceIndex, 1);
+		race.bar1fg:SetFrameLevel(102);
+
+		race.bar2bg = p:CreateBar(cfg.framePadding + cfg.framePadding + cfg.frameIconSize + cfg.framePadding + cfg.frameMeterSize, y, cfg.frameMeterSize, cfg.frameIconSize, 0.5, 0.5, 0.8, raceIndex, 2);
+		race.bar2bg:SetFrameLevel(101);
+		race.bar2fg = p:CreateBar(cfg.framePadding + cfg.framePadding + cfg.frameIconSize + cfg.framePadding + cfg.frameMeterSize, y, cfg.frameMeterSize / 2, cfg.frameIconSize, 0, 0, 0.8, raceIndex, 2);
+		race.bar2fg:SetFrameLevel(102);
+
+		y = y + cfg.framePadding + cfg.frameIconSize;
+	end
+
+	p.UIFrame:SetHeight(y);
+
+	if (cfg.hide == true) then 
+		p.UIFrame:Hide();
+	else
+		p.UIFrame:Show();
+	end
+end
+
+function addon:CreateButton(x, y, w, h, texture, race, mode)
+
+	local p = Professor;
+
+	local b = CreateFrame("Button", nil, p.UIFrame);
+	b:SetPoint("TOPLEFT", x, 0-y);
+	b:SetWidth(w);
+	b:SetHeight(h);
+	b.tt_race = race;
+	b.tt_mode = mode;
+
+	b.texture = b:CreateTexture(nil, "ARTWORK");
+	b.texture:SetAllPoints(b)
+	b.texture:SetTexture(texture)
+	b.texture:SetTexCoord(0.0, 0.5703, 0.0, 0.6484);
+
+	addon:Mouseify(b, true);
+
+	b:SetHitRectInsets(0, 0, 0, 0);
+	b:SetScript("OnEnter", function(bself) addon:ShowTooltip(bself.tt_race, bself.tt_mode); end);
+	b:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+	return b;
+end
+
+function addon:CreateBar(x, y, w, h, red, green, blue, race, mode)
+
+	local p = Professor;
+
+	local b = CreateFrame("StatusBar", nil, p.UIFrame)
+	b:SetPoint("TOPLEFT", x, 0-y);
+	b:SetWidth(w);
+	b:SetHeight(h);
+	b:SetMinMaxValues(0, 100);
+	b:SetValue(100);
+	b:SetOrientation("HORIZONTAL");
+	b:SetStatusBarTexture([[Interface\TargetingFrame\UI-StatusBar]], "ARTWORK");
+	b:SetStatusBarColor(red, green, blue);
+	b.tt_race = race;
+	b.tt_mode = mode;
+
+	b.label = b:CreateFontString(nil, "OVERLAY");
+	b.label:Show()
+	b.label:ClearAllPoints()
+	b.label:SetTextColor(1, 1, 1, 1);
+	b.label:SetFont([[Fonts\FRIZQT__.TTF]], 12, "OUTLINE");
+	b.label:SetPoint("LEFT", b, "LEFT", 0, 0);
+	b.label:SetText(" ");
+
+	addon:Mouseify(b);
+
+	b:SetHitRectInsets(0, 0, 0, 0);
+	b:SetScript("OnEnter", function(bself) addon:ShowTooltip(bself.tt_race, bself.tt_mode); end);
+	b:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+	return b;
+end
+
+function addon:Mouseify(f, is_button)
+
+	f:EnableMouse(true);
+	f:RegisterForDrag("LeftButton");
+	f:SetScript("OnDragStart", self.OnDragStart);
+	f:SetScript("OnDragStop", self.OnDragStop);
+
+	if (is_button) then
+		f:RegisterForClicks("AnyUp");
+		f:SetScript("OnClick", self.OnClick);
+	end
+end
+
+function addon:OnDragStart(frame)
+	local p = Professor;
+	local cfg = Professor.options;
+
+	if (cfg.lock == false) then
+
+		p.UIFrame:StartMoving();
+		p.UIFrame.isMoving = true;
+		GameTooltip:Hide()
+	end
+end
+
+function addon:OnDragStop(frame)
+	local p = Professor;
+	p.UIFrame:StopMovingOrSizing();
+	p.UIFrame.isMoving = false;
+end
+
+function addon:ShowTooltip(raceId, mode)
+
+	local race = self.races[raceId];
+
+	if (mode == 0) then
+
+		GameTooltip:SetOwner(race.icon, "ANCHOR_BOTTOM", 0, 10);
+
+		GameTooltip:AddLine(race.name, 1, 1, 0); -- yellow
+		GameTooltip:AddLine(race.completedCommon.."/"..race.totalCommon.." Commons", 1, 1, 1);
+		GameTooltip:AddLine(race.completedRare.."/"..race.totalRare.." Rares", 0.375, 0.75, 1);
+	end
+
+	if (mode == 1) then
+
+		GameTooltip:SetOwner(race.bar1bg, "ANCHOR_BOTTOM", 0, 10);
+
+		GameTooltip:AddLine("Common "..race.name.." Artifacts", 1, 1, 0); -- yellow
+		if (race.completedCommon == race.totalCommon) then
+			GameTooltip:AddLine("Complete! "..race.completedCommon.."/"..race.totalCommon, 0, 1, 0);
+		else
+			GameTooltip:AddLine("Found "..race.completedCommon.."/"..race.totalCommon.." ("..(race.totalCommon-race.completedCommon).." Missing)", 1, 0, 0);
+			GameTooltip:AddLine(" ");
+			
+			for icon, artifact in pairs(race.artifacts) do
+				local link = GetSpellLink(artifact.spellId)
+				if ((artifact.solves == 0) and (artifact.rare == false)) then
+
+					GameTooltip:AddLine(link);
+				end
+			end
+		end
+
+	end
+
+	if (mode == 2) then
+
+		GameTooltip:SetOwner(race.bar2bg, "ANCHOR_BOTTOM", 0, 10);
+
+		GameTooltip:AddLine("Rare "..race.name.." Artifacts", 1, 1, 0); -- yellow
+		if (race.completedRare == race.totalRare) then
+			GameTooltip:AddLine("Complete! "..race.completedRare.."/"..race.totalRare, 0, 1, 0);
+		else
+			GameTooltip:AddLine("Found "..race.completedRare.."/"..race.totalRare.." ("..(race.totalRare-race.completedRare).." Missing)", 1, 0, 0);
+			GameTooltip:AddLine(" ");
+			
+			for icon, artifact in pairs(race.artifacts) do
+				local link = GetSpellLink(artifact.spellId)
+				if ((artifact.solves == 0) and (artifact.rare == true)) then
+
+					GameTooltip:AddLine(link);
+				end
+			end
+		end
+	end
+
+	GameTooltip:ClearAllPoints();
+	GameTooltip:Show();
+end
+
+function addon:OnArtifcatHistoryReady(event, ...)
+	if IsArtifactCompletionHistoryAvailable() then
+
+		self:UpdateHistory();
+
+		local cfg = Professor.options;
+
+		for raceIndex, race in ipairs(self.races) do
+
+			if (race.completedCommon  == 0) then
+				race.bar1fg:Hide()
+			else
+				race.bar1fg:Show()
+				race.bar1fg:SetWidth(cfg.frameMeterSize * race.completedCommon / race.totalCommon);
+				if (race.completedCommon == race.totalCommon) then
+					race.bar1fg:SetStatusBarColor(0, 1, 0)
+				else
+					race.bar1fg:SetStatusBarColor(1, 1, 1)
+				end
+			end
+
+			if (race.completedRare  == 0) then
+				race.bar2fg:Hide()
+			else
+				race.bar2fg:Show()
+				race.bar2fg:SetWidth(cfg.frameMeterSize * race.completedRare / race.totalRare);
+
+				if (race.completedRare == race.totalRare) then
+					race.bar2fg:SetStatusBarColor(0, 1, 0)
+				else
+					race.bar2fg:SetStatusBarColor(0, 0, 0.8)
+				end
+			end
+
+		end
+
+	end
+end
+
+function addon:OnArtifactUpdate(event, ...)
+	RequestArtifactCompletionHistory()
+end
