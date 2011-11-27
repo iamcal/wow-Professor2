@@ -8,6 +8,7 @@ function addon:OnInitialize()
 
 	addon:LoadOptions();
 	addon:BuildFrame();
+	addon:CreateOptionsFrame();
 
 	self:RegisterEvent("ARTIFACT_HISTORY_READY", "OnArtifcatHistoryReady");
 	self:RegisterEvent("ARTIFACT_UPDATE", "OnArtifactUpdate");
@@ -535,8 +536,8 @@ function addon:BuildFrame()
 	for raceIndex, race in ipairs(self.races) do
 
 
-		race.icon = p:CreateButton(cfg.framePadding, y, cfg.frameIconSize, cfg.frameIconSize, race.icon, raceIndex, 0);
-		race.icon:SetFrameLevel(101);
+		race.iconBtn = p:CreateButton(cfg.framePadding, y, cfg.frameIconSize, cfg.frameIconSize, race.icon, raceIndex, 0);
+		race.iconBtn:SetFrameLevel(101);
 
 		race.bar1bg = p:CreateBar(cfg.framePadding + cfg.framePadding + cfg.frameIconSize, y, cfg.frameMeterSize, cfg.frameIconSize, 0.5, 0.5, 0.5, raceIndex, 1);
 		race.bar1bg:SetFrameLevel(101);
@@ -628,6 +629,8 @@ function addon:Mouseify(f, is_button)
 	if (is_button) then
 		f:RegisterForClicks("AnyUp");
 		f:SetScript("OnClick", self.OnClick);
+	else
+		f:SetScript("OnMouseUp", self.OnClick);
 	end
 end
 
@@ -649,13 +652,20 @@ function addon:OnDragStop(frame)
 	p.UIFrame.isMoving = false;
 end
 
+function addon:OnClick(aButton)
+	if (aButton == "RightButton") then
+		GameTooltip:Hide()
+		addon:ShowMenu();
+	end
+end
+
 function addon:ShowTooltip(raceId, mode)
 
 	local race = self.races[raceId];
 
 	if (mode == 0) then
 
-		GameTooltip:SetOwner(race.icon, "ANCHOR_BOTTOM", 0, 10);
+		GameTooltip:SetOwner(race.iconBtn, "ANCHOR_BOTTOM", 0, 10);
 
 		GameTooltip:AddLine(race.name, 1, 1, 0); -- yellow
 		GameTooltip:AddLine(race.completedCommon.."/"..race.totalCommon.." Commons", 1, 1, 1);
@@ -677,7 +687,7 @@ function addon:ShowTooltip(raceId, mode)
 				local link = GetSpellLink(artifact.spellId)
 				if ((artifact.solves == 0) and (artifact.rare == false)) then
 
-					GameTooltip:AddLine(link);
+					GameTooltip:AddLine("|T"..artifact.icon..":0|t"..link);
 				end
 			end
 		end
@@ -699,7 +709,7 @@ function addon:ShowTooltip(raceId, mode)
 				local link = GetSpellLink(artifact.spellId)
 				if ((artifact.solves == 0) and (artifact.rare == true)) then
 
-					GameTooltip:AddLine(link);
+					GameTooltip:AddLine("|T"..artifact.icon..":0|t"..link);
 				end
 			end
 		end
@@ -708,6 +718,76 @@ function addon:ShowTooltip(raceId, mode)
 	GameTooltip:ClearAllPoints();
 	GameTooltip:Show();
 end
+
+function addon:ShowMenu()
+
+	local menu_frame = CreateFrame("Frame", "menuFrame", UIParent, "UIDropDownMenuTemplate")
+
+	local menuList = {};
+	local first = true;
+
+	table.insert(menuList, {
+		text = "Options",
+		func = function() InterfaceOptionsFrame_OpenToCategory(addon.OptionsFrame.name); end,
+		isTitle = false,
+		checked = false,
+		disabled = false,
+	});
+
+	local locked = false;
+	if (Professor.options.lock) then locked = true; end
+
+	table.insert(menuList, {
+		text = "Lock Frame",
+		func = function() addon:ToggleLock() end,
+		isTitle = false,
+		checked = locked,
+		disabled = false,
+	});
+
+	table.insert(menuList, {
+		text = "Hide Window",
+		func = function() addon:SetHide(true) end,
+		isTitle = false,
+		checked = false,
+		disabled = false,
+	});
+
+	EasyMenu(menuList, menu_frame, "cursor", 0 , 0, "MENU")
+end
+
+function addon:SetHide(a)
+	Professor.options.hide = a;
+	if (a) then
+		Professor.UIFrame:Hide();
+	else
+		Professor.UIFrame:Show();
+	end
+end
+
+function addon:ToggleHide()
+	if (Professor.options.hide) then
+		self:SetHide(false);
+	else
+		self:SetHide(true);
+	end
+end
+
+--
+
+function addon:SetLocked(a)
+	Professor.options.lock = a;
+end
+
+function addon:ToggleLock()
+	if (Professor.options.lock) then
+		self:SetLocked(false);
+	else
+		self:SetLocked(true);
+	end
+end
+
+--
 
 function addon:OnArtifcatHistoryReady(event, ...)
 	if IsArtifactCompletionHistoryAvailable() then
@@ -751,3 +831,38 @@ end
 function addon:OnArtifactUpdate(event, ...)
 	RequestArtifactCompletionHistory()
 end
+
+--
+
+function addon:CreateOptionsFrame()
+
+	self.OptionsFrame = CreateFrame("Frame", "Professor2OptionsFrame", UIParent);
+	self.OptionsFrame:SetFrameStrata("DIALOG");
+	self.OptionsFrame:Hide();
+	self.OptionsFrame.name = 'Professor 2';
+
+	self:CreateOptionButton(self.OptionsFrame, 'prof_opt_show', 10, 10, 150, "Show window", function() addon:SetHide(false) end);
+	self:CreateOptionButton(self.OptionsFrame, 'prof_opt_hide', 10, 34, 150, "Hide window", function() addon:SetHide(true) end);
+
+	InterfaceOptions_AddCategory(self.OptionsFrame);
+end
+
+function addon:CreateOptionButton(parent, id, x, y, w, value, onClick)
+
+	local b = CreateFrame("Button", id, parent, "UIPanelButtonTemplate2");
+	b:SetPoint("TOPLEFT", x, 0-y)
+	b:SetWidth(w)
+	b:SetHeight(24)
+	--b:SetNormalTexture(texture);
+
+	b.text = b:GetFontString();
+	b.text:SetPoint("LEFT", b, "LEFT", 7, 0);
+	b.text:SetPoint("RIGHT", b, "RIGHT", -7, 0);
+
+	b:SetScript("OnClick", onClick);
+	b:RegisterForClicks("AnyDown");
+
+	b:SetText(value);
+	b:EnableMouse();
+end
+
